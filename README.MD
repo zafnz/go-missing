@@ -4,16 +4,11 @@ Go is a powerful language, but some people believe quite strongly that it is mis
 This library attempts to address that. Contributions are welcome. 
 
 # Promises
-This library also includes promises, see http://github.com/zafnz/go-missing/promise
+This library also includes promises, see [http://github.com/zafnz/go-missing/promise](https://github.com/zafnz/go-missing/tree/main/promise)
 
-# Usage 
-Just like any other library, but see the next section for an idea to reduce typing. 
+# Usage (optional alias)
+Just like any other library, `go get github.com/zafnz/go-missing`.
 
-```
-go get github.com/zafnz/missing 
-```
-
-# Usage (alias library name)
 While you can use this library like any other, the `missing` prefix for every type and function can be a bit 
 annoying. So you might want to do something like. 
 
@@ -22,8 +17,10 @@ import M "github.com/zafnz/missing"
 
 func main() {
     var mylist M.List[int]
+    resp, err := M.TimeoutFnErr(time.Second * 5, http.Get("http://example.com/")) 
 
-    fmt.Printf("7 * 3 %s 21", M.If(7 * 3 == 21, "is", "is not"))
+    fmt.Printf("7 * 3 %s 21", 
+        M.If(7 * 3 == 21, "is", "is not"))
 }
 ```
 
@@ -44,6 +41,6 @@ A `missing.List` is a slice that has some useful functions -- see godoc for full
 - `Foreach(fn)` // Calls the provided function for each item in the list. You probably just want to use a normal for loop
 - `Sort(fn)` // Sorts the list inplace.  
 
-# GenericList 
-A generic list is a list, but is missing `Contains` as unlike a `List` a generic list can be any type, it doesn't 
+# AnyList 
+An any list is a list, but is missing `Contains` as unlike a `List` a generic list can be any type, it doesn't 
 need to be comparable. Otherwise it is functionaly identical to List.
