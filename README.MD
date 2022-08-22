@@ -1,10 +1,13 @@
 # The missing go functions and types.
+[![GoDoc](https://godoc.org/github.com/zafnz/go-missing?status.svg)](https://godoc.org/github.com/zafnz/go-missing)
 
 Go is a powerful language, but some people believe quite strongly that it is missing some key functionality.
 This library attempts to address that. Contributions are welcome. 
 
 # Promises
 This library also includes promises, see [http://github.com/zafnz/go-missing/promise](https://github.com/zafnz/go-missing/tree/main/promise)
+[![GoDoc](https://godoc.org/github.com/zafnz/go-missing/promise?status.svg)](https://godoc.org/github.com/zafnz/go-missing/promise)
+
 
 # Usage
 Just like any other library, `go get github.com/zafnz/go-missing`.
