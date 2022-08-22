@@ -7,15 +7,15 @@ import (
 
 // Under the hood a set is simply a map:
 //   type Set[T comparable] map[T]struct{}
-// so all the usual functions will work (such as len), however this only applies to Set.
+// All the usual map functions will work (such as len).
+//
+// Note: You can instantiate a Set with either `missing.NewSet()` or just:
+//   set := missing.Set[int]{}
 type Set[T comparable] map[T]struct{}
 
-// A fast set is a non thread safe set, however it is much faster than the normal Set in this library. As you
-// can see MakeSet returns a Set[T] so you can treat a Set as a Set everywhere, just know that the
-// operations are quicker, and it's not threadsafe
-// Create a set from the contents of a slice.
+// Creates a new set, using the provided slice.
 //    x := []int { 1,2,3,4,5,6 }
-//    s := set.FromSlice(x)
+//    s := set.NewSet(x)
 func NewSet[T comparable](slice []T) Set[T] {
 	s := make(Set[T], len(slice))
 	for _, v := range slice {
@@ -24,8 +24,7 @@ func NewSet[T comparable](slice []T) Set[T] {
 	return s
 }
 
-// Creates a copy of the set as a slice.
-//
+// Creates a copy of the set as a slice. Useful for giving the set to other functions that expect a slice.
 func (s Set[T]) ToSlice() []T {
 	keys := make([]T, 0, len(s))
 	for k := range s {
@@ -47,6 +46,7 @@ func (s Set[T]) Length() int {
 	return len(s)
 }
 
+// Adds the values from the supplied set to this set. (inplace operation, c.f. Union)
 func (a *Set[T]) AddSet(b Set[T]) {
 	for k := range b {
 		(*a)[k] = struct{}{}
@@ -82,7 +82,7 @@ func (a Set[T]) Difference(b Set[T]) Set[T] {
 	return diff
 }
 
-// Returns the union of set a + b. This is the equivilent of set.Add, but returns
+// Returns the union of set a + b. This is the equivilent of set.AddSet, but returns
 // a new set instead of being an inplace operation.
 func (a Set[T]) Union(b Set[T]) Set[T] {
 	union := make(Set[T])
@@ -112,13 +112,13 @@ func (s Set[T]) String() string {
 	return fmt.Sprint(s.ToSlice())
 }
 
-// A set marshalls into a slice.
+// A set marshalls into a json array.
 func (s Set[T]) MarshalJSON() ([]byte, error) {
 	list := s.ToSlice()
 	return json.Marshal(list)
 }
 
-// A set unmarshalls from a slice.
+// A set unmarshalls from a json array.
 func (s *Set[T]) UnmarshalJSON(b []byte) error {
 	var list []T
 	err := json.Unmarshal(b, &list)

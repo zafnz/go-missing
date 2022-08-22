@@ -41,7 +41,7 @@ func If[T any](cmp bool, trueVal T, falseVal T) T {
 // Important Note: Go has no way to terminate a goroutine. If your function does not exit, it will remain using
 // a go routine thread forever. This is a limitation (or a feature) of go. If you want to support some kind of
 // termination ability, then use context.Contexts and signal with those! Almost all built-in libraries that
-// can take time (eg http, net, etc) support taking a ctx.
+// can take then (eg http, net, etc) support taking a ctx. You probably don't need this function at that point.
 //
 // Example -- ensure add a+b and ensure it happens within 1 second:
 //	 a := 42
