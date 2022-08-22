@@ -11,7 +11,7 @@ import (
 
 func ExamplePromise() {
 	x := promise.New(func() (int, error) {
-		return 1, nil
+		return 42, nil
 	})
 
 	// Await pauses execution
@@ -30,9 +30,9 @@ func ExamplePromise() {
 	v, _ = x.Await()
 	fmt.Println(v)
 	// Output:
-	// 1
-	// 1
-	// 1
+	// 42
+	// 42
+	// 42
 }
 
 func TestPromiseChain(t *testing.T) {

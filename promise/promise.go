@@ -1,3 +1,5 @@
+// Promise functionality for go. There are a couple of Go promise libraries around, this one attempts to balance
+// matching how promises typically work, with still being in a "go way".
 package promise
 
 import (
@@ -6,6 +8,10 @@ import (
 	"time"
 )
 
+// A promise will execute immediately, and the result of the promise (the returned value or error) can be
+// retrieved from the promise with Await() or Then() functions. Promises can take some of the leg work out
+// of creating a go routine and getting the value back later on. You can pass a promise around outside the
+// scope of the original function and later get the value with Await(). Promises are thread safe.
 type Promise[T any] struct {
 	value    T
 	err      error
@@ -58,27 +64,6 @@ func Reject[T any](err error) *Promise[T] {
 	}
 }
 
-func (p *Promise[T]) resolve(v T) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.finished {
-		return
-	}
-	p.value = v
-	p.finished = true
-	p.wg.Done()
-}
-func (p *Promise[T]) reject(err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.finished {
-		return
-	}
-	p.err = err
-	p.finished = true
-	p.wg.Done()
-}
-
 // Waits for the promise to finish, and returns the value and error from the promise.
 func (p *Promise[T]) Await() (T, error) {
 	p.wg.Wait()
@@ -86,7 +71,8 @@ func (p *Promise[T]) Await() (T, error) {
 }
 
 // Calls the supplied function when the promise has resolved, and returns a promise that will resolve when
-// the supplied function finishes (allowing for chaining). Note: There is no Catch().
+// the supplied function finishes (allowing for chaining). Note: There is no Catch(), it doesn't really align
+// with how go works.
 func (p *Promise[T]) Then(fn func(T, error) (T, error)) *Promise[T] {
 	next := New(func() (T, error) {
 		p.wg.Wait()
@@ -157,11 +143,34 @@ func All[T any](promises ...*Promise[T]) *Promise[[]T] {
 	})
 }
 
-// Returns a promise that will error with  os.ErrDeadlineExceeded when the supplied duration elapses
+// Returns a promise that will error with os.ErrDeadlineExceeded when the supplied duration elapses.
+// This can be combined with promise.Race to run a function that times out. However be cautious as the
+// other function will still keep running even after the Race has returned the timeout.
 func Timeout[T any](duration time.Duration) *Promise[T] {
 	return New(func() (T, error) {
 		var t T
 		time.Sleep(duration)
 		return t, os.ErrDeadlineExceeded
 	})
+}
+
+func (p *Promise[T]) resolve(v T) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.finished {
+		return
+	}
+	p.value = v
+	p.finished = true
+	p.wg.Done()
+}
+func (p *Promise[T]) reject(err error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.finished {
+		return
+	}
+	p.err = err
+	p.finished = true
+	p.wg.Done()
 }

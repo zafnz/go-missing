@@ -3,6 +3,9 @@
 Go is a powerful language, but some people believe quite strongly that it is missing some key functionality.
 This library attempts to address that. Contributions are welcome. 
 
+# Promises
+This library also includes promises, see http://github.com/zafnz/go-missing/promise
+
 # Usage 
 Just like any other library, but see the next section for an idea to reduce typing. 
 
@@ -17,8 +20,9 @@ annoying. So you might want to do something like.
 ```go
 import M "github.com/zafnz/missing"
 
-func Main() {
+func main() {
     var mylist M.List[int]
+
     fmt.Printf("7 * 3 %s 21", M.If(7 * 3 == 21, "is", "is not"))
 }
 ```
