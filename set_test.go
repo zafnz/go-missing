@@ -68,6 +68,14 @@ func TestTypes(t *testing.T) {
 	}
 }
 
+func ExampleSet_Union() {
+	a := missing.NewSet([]int{1, 2, 3, 4, 5})
+	b := missing.NewSet([]int{1, 2, 3})
+	d := a.Difference(b)
+	fmt.Println(d)
+	// Will output 4, 5
+}
+
 func TestUnion(t *testing.T) {
 	a := missing.NewSet([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	b := missing.NewSet([]int{6, 7, 8, 9, 10, 20, 30, 40})

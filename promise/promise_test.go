@@ -9,6 +9,36 @@ import (
 	"github.com/zafnz/go-missing/promise"
 )
 
+func ExamplePromise_Then() {
+	fortyTwo := promise.New(func() (int, error) {
+		time.Sleep(10 * time.Millisecond)
+		return 42, nil
+	})
+	bigger := fortyTwo.Then(func(num int, err error) (int, error) {
+		time.Sleep(20 * time.Millisecond)
+		return num * 10, nil
+	})
+	// We now have bigger as a promise, and when we Await on bigger, it will finally
+	// return when both it and the original promise have returned (about 30ms later)
+	num, _ := bigger.Await()
+	fmt.Println(num) // Output: 420
+}
+func ExamplePromise_Then_chaining() {
+	// We can also chain:
+	finalPromise := promise.New(func() (string, error) {
+		return "Hello", nil
+	}).Then(func(str string, err error) (string, error) {
+		return str + " World", nil
+	}).Then(func(str string, err error) (string, error) {
+		return str + "!", nil
+	})
+	// Note: The way golang works, there's not too much point to chaining like this
+	// but this functionality is here, just in case.
+
+	result, _ := finalPromise.Await()
+	fmt.Println(result) // Output: Hello World!
+}
+
 func ExamplePromise() {
 	x := promise.New(func() (int, error) {
 		return 42, nil
@@ -33,6 +63,29 @@ func ExamplePromise() {
 	// 42
 	// 42
 	// 42
+}
+
+func ExamplePromise_errors() {
+	// Errors in promises are passed to any Then() functions and as a return in Await()
+	p := promise.New(func() (int, error) {
+		return 0, errors.New("something went wrong")
+	})
+	_, err := p.Await()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	p.Then(func(i int, err error) (int, error) {
+		if err != nil {
+			fmt.Println("Inside Then(), we see the promise got an error!")
+		}
+		return 0, err // We can propegate the error if we want, or return another value instead
+	})
+	// For the Example purpose we need to wait a few milliseconds for that .Then() output
+	// to occur.
+	time.Sleep(100 * time.Millisecond)
+	// Output:
+	// something went wrong
+	// Inside Then(), we see the promise got an error!
 }
 
 func TestPromiseChain(t *testing.T) {
