@@ -8,7 +8,6 @@ This library attempts to address that. Contributions are welcome.
 This library also includes promises, see [http://github.com/zafnz/go-missing/promise](https://github.com/zafnz/go-missing/tree/main/promise)
 [![GoDoc](https://godoc.org/github.com/zafnz/go-missing/promise?status.svg)](https://godoc.org/github.com/zafnz/go-missing/promise)
 
-
 # Usage
 Just like any other library, `go get github.com/zafnz/go-missing`.
 
@@ -69,15 +68,15 @@ A generic Set type, which is a list of objects (must be a comparable type) that 
 slice and list trivially and json encodes/decodes as a json array.
 
 - `x := Set[int]{}` // Creates a new empty set of type int.
-- `NewSet(slice)` // Creates a new set from a provided slice, of whatever type the slice is.
+- `x := make(Set[string])` // Creates an empty set of type string.
+- `x := NewSet(slice)` // Creates a new set from a provided slice, of whatever type the slice is.
 - `set.Add(items...)` // Adds one or more items to a set.
 - `set.Contains(items)` // Returns true if the set contains the specified item
 - `set.Union(b)`, `.Intersection(b)`, `.Difference(b)` // Returns a set that is the result of the specified set operation. (See pkg docs)
 - `set.AddSlice(slice)` // Adds a slice into the set
 - `set.AddSet(set)` // Adds a set into this set (c.f. `.Union` which returns a new set).
 
-
-## Alias module
+# Alias module
 While you can use this library like any other, the `missing` prefix for every type and function can be a bit 
 annoying. So you might want to do something like: 
 

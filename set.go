@@ -9,7 +9,7 @@ import (
 //   type Set[T comparable] map[T]struct{}
 // All the usual map functions will work (such as len).
 //
-// Note: You can instantiate a Set with either `missing.NewSet()` or just:
+// Note: You can instantiate a Set with `make(missing.Set[T])`, `missing.NewSet()` or just:
 //   set := missing.Set[int]{}
 type Set[T comparable] map[T]struct{}
 

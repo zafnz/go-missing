@@ -3,11 +3,38 @@ package missing_test
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/zafnz/go-missing"
 )
+
+func ExampleSet_Difference() {
+	a := missing.NewSet([]int{1, 2, 3, 4})
+	b := missing.NewSet([]int{1, 2, 3})
+	d := a.Difference(b)
+	fmt.Println(d)
+	// Output: [4]
+}
+
+func ExampleSet_Union() {
+	a := missing.NewSet([]int{1, 2, 3, 4, 5})
+	b := missing.NewSet([]int{5, 6, 7})
+	u := a.Union(b).ToSlice()
+	sort.Ints(u) // Sort so output can be tested in example.
+	fmt.Println(u)
+	// Output: [1 2 3 4 5 6 7]
+}
+
+func ExampleSet_Intersection() {
+	a := missing.NewSet([]int{1, 2, 3, 4, 5})
+	b := missing.NewSet([]int{4, 5, 6, 7})
+	i := a.Intersection(b).ToSlice()
+	sort.Ints(i)
+	fmt.Println(i)
+	// Output: [4 5]
+}
 
 func TestSets(t *testing.T) {
 	a := missing.Set[int]{}
@@ -66,14 +93,6 @@ func TestTypes(t *testing.T) {
 	if c.Length() != 2 {
 		t.Error("Added same values for custom type, but set increased")
 	}
-}
-
-func ExampleSet_Union() {
-	a := missing.NewSet([]int{1, 2, 3, 4, 5})
-	b := missing.NewSet([]int{1, 2, 3})
-	d := a.Difference(b)
-	fmt.Println(d)
-	// Will output 4, 5
 }
 
 func TestUnion(t *testing.T) {
