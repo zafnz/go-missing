@@ -3,8 +3,8 @@
 package promise
 
 import (
+	"fmt"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -16,8 +16,13 @@ type Promise[T any] struct {
 	value    T
 	err      error
 	finished bool
-	wg       sync.WaitGroup
-	mu       sync.Mutex
+	done     chan struct{}
+}
+
+var closedChan = make(chan struct{})
+
+func init() {
+	close(closedChan)
 }
 
 // Returns a new promise, that will resolve when the supplied function returns, either the value or an error.
@@ -36,7 +41,7 @@ type Promise[T any] struct {
 //    fmt.Println(greeting) // Outputs: Hello world
 func New[T any](fn func() (T, error)) *Promise[T] {
 	p := Promise[T]{}
-	p.wg.Add(1)
+	p.done = make(chan struct{})
 	go func() {
 		v, err := fn()
 		if err != nil {
@@ -48,25 +53,32 @@ func New[T any](fn func() (T, error)) *Promise[T] {
 	return &p
 }
 
-// Returns a promise that resolves with the provided value
+// Returns a promise that resolves with the provided value.
 func Resolve[T any](val T) *Promise[T] {
 	return &Promise[T]{
 		value:    val,
 		finished: true,
+		done:     closedChan,
 	}
 }
 
-// Returns a promise that rejects with the provided error
+// Returns a promise that rejects with the provided error.
+// When creating a Reject promise, you will need to provide the promise type, as it cannot be
+// infered as it is everywhere else.
+//
+//  // Returns a string promise that errors immediately
+//  p := promise.Reject[string](errors.New("Something went wrong"))
 func Reject[T any](err error) *Promise[T] {
 	return &Promise[T]{
 		err:      err,
 		finished: true,
+		done:     closedChan,
 	}
 }
 
 // Waits for the promise to finish, and returns the value and error from the promise.
 func (p *Promise[T]) Await() (T, error) {
-	p.wg.Wait()
+	<-p.Done()
 	return p.value, p.err
 }
 
@@ -75,16 +87,35 @@ func (p *Promise[T]) Await() (T, error) {
 // with how go works.
 func (p *Promise[T]) Then(fn func(T, error) (T, error)) *Promise[T] {
 	next := New(func() (T, error) {
-		p.wg.Wait()
+		<-p.Done()
 		return fn(p.value, p.err)
 	})
 	return next
 }
 
-type result[T any] struct {
-	val T
-	err error
-	idx int
+// Done returns a channel that's closed when the promise has resolved or rejected. Successive calls to Done return the
+// same value, and calling Done on a returned promise will return an immediately closed channel. This is the best
+// wait to wait for a promise to resolve without calling Await.
+//
+//   func myFunc(ctx context.Context) int {
+//   	p.New(func() (int, error) {
+//   		// Do work...
+//   		return 42, nil
+//   	})
+//   	select {
+//   	case <- p.Done():
+//   		return p.Await() // Will return immediately
+//   	case <- ctx.Done():
+//   		// If the ctx is cancelled/timesout, then we return immediately and forget about the promise.
+//   		return 0, ctx.Err()
+//   	}
+//   }
+func (p *Promise[T]) Done() chan struct{} {
+	return p.done
+}
+
+func (p *Promise[T]) String() string {
+	return fmt.Sprintf("Promise.%T", p.value)
 }
 
 // Returns a promise that resolves to the first value from the supplied promises.
@@ -97,16 +128,16 @@ type result[T any] struct {
 //    val, _ := promise.Race(a, b).Await()
 func Race[T any](promises ...*Promise[T]) *Promise[T] {
 	return New(func() (T, error) {
-		ch := make(chan result[T])
+		ch := make(chan int, len(promises))
 
 		for idx, p := range promises {
 			go func(idx int, p *Promise[T]) {
-				v, err := p.Await()
-				ch <- result[T]{val: v, err: err, idx: idx}
+				<-p.Done()
+				ch <- idx
 			}(idx, p)
 		}
-		res := <-ch
-		return res.val, res.err
+		idx := <-ch
+		return promises[idx].value, promises[idx].err
 	})
 }
 
@@ -120,25 +151,25 @@ func Race[T any](promises ...*Promise[T]) *Promise[T] {
 //    fmt.Println(vals) // Outputs: [10 20 30]
 func All[T any](promises ...*Promise[T]) *Promise[[]T] {
 	return New(func() ([]T, error) {
-		chResults := make(chan result[T])
+		results := make([]T, len(promises))
+		promiseIdx := make(chan int, len(promises))
+		// Spawn multiple go routines to wait on each promise, and then pass the idx through the return channel
 		for idx, p := range promises {
 			go func(idx int, p *Promise[T]) {
-				v, err := p.Await()
-				chResults <- result[T]{
-					val: v,
-					err: err,
-					idx: idx,
-				}
+				<-p.Done()
+				promiseIdx <- idx
 			}(idx, p)
 		}
-		results := make([]T, len(promises))
+		// Wait for all the promises to resolve.
 		for i := 0; i < len(promises); i++ {
-			res := <-chResults
-			if res.err != nil {
-				return nil, res.err
+			idx := <-promiseIdx // promiseIdx returns the index of the promise that just resolved
+			v, err := promises[idx].Await()
+			if err != nil {
+				return nil, err
 			}
-			results[res.idx] = res.val
+			results[idx] = v
 		}
+		close(promiseIdx)
 		return results, nil
 	})
 }
@@ -146,6 +177,11 @@ func All[T any](promises ...*Promise[T]) *Promise[[]T] {
 // Returns a promise that will error with os.ErrDeadlineExceeded when the supplied duration elapses.
 // This can be combined with promise.Race to run a function that times out. However be cautious as the
 // other function will still keep running even after the Race has returned the timeout.
+//
+// This function, like promise.Reject, will need to specify the promise type:
+//   promise.Timeout[float64](time.Second * 5)
+//
+// See Dome() for a channel that is a better way to do this, especially with contexts.
 func Timeout[T any](duration time.Duration) *Promise[T] {
 	return New(func() (T, error) {
 		var t T
@@ -154,23 +190,21 @@ func Timeout[T any](duration time.Duration) *Promise[T] {
 	})
 }
 
+// Internal functions that resolve/reject the promises
+
 func (p *Promise[T]) resolve(v T) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	if p.finished {
 		return
 	}
 	p.value = v
 	p.finished = true
-	p.wg.Done()
+	close(p.done)
 }
 func (p *Promise[T]) reject(err error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	if p.finished {
 		return
 	}
 	p.err = err
 	p.finished = true
-	p.wg.Done()
+	close(p.done)
 }

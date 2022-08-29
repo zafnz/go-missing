@@ -3,6 +3,7 @@ package promise_test
 import (
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -178,9 +179,7 @@ func TestAll(t *testing.T) {
 		t.Errorf("Vals is out of order: %v", vals)
 	}
 
-	c := promise.New(func() (int, error) {
-		return 0, errors.New("blerg")
-	})
+	c := promise.Reject[int](errors.New("blerg"))
 
 	_, err = promise.All(a, b, c).Await()
 	if err.Error() != "blerg" {
@@ -194,4 +193,41 @@ func TestTime(t *testing.T) {
 		return 42, nil
 	})).Await()
 
+}
+
+func TestChannel(t *testing.T) {
+	p := promise.Timeout[int](time.Millisecond * 500)
+	ch := time.Tick(time.Millisecond * 700)
+	counter := int32(5)
+	now := time.Now()
+	for i := int32(0); i < counter; i++ {
+		go func() {
+			<-p.Done()
+			if time.Since(now) < time.Millisecond*500 {
+				t.Error("p.Done() resolved too quickly")
+			}
+			atomic.AddInt32(&counter, -1)
+
+		}()
+	}
+	<-ch
+	x := atomic.LoadInt32(&counter)
+	if x != 0 {
+		t.Errorf("Not all go routines returned after selecting on promise.Done(): %d", x)
+	}
+	ch = time.Tick(time.Millisecond * 100) // Stop us hanging
+	select {
+	case <-ch:
+		t.Error("Timeout waiting for closed channel to signal")
+	case <-p.Done():
+		return
+	}
+}
+
+func TestString(t *testing.T) {
+	p := promise.Resolve(int32(42))
+	str := p.String()
+	if str != "Promise.int32" {
+		t.Errorf("String is incorrect: %s", str)
+	}
 }
